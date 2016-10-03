@@ -1,24 +1,30 @@
----
+--- # Playbook for install docker and other stuff
+# missing on local 
+# sudo pip install boto 
+# sudo pip install docker-py==1.7.0
 - hosts: localhost
   connection: docker
   tasks:
+  - name: create directory for dockers images
+    local_action: file name=images state=directory
+   
   - name: Build docker image
     local_action: >
       docker_image name=tomcat
         tag=8.5.5-jre8-alpine
         archive_path=images/javastack-image.tar.gz
-    tag: create_image
+    tags: create_image
 
-  - ec2:
-    key_name: mykey
-    instance_type: t2.micro
-    image: ami-b04e92d0
-    wait: yes
-    group: webserver
-    count: 3
-    vpc_subnet_id: subnet-29e63245
-    assign_public_ip: yes
-    tag: create_instance
+  - name: Start ec2
+    ec2:
+      key_name: mykey
+      instance_type: t2.micro
+      image: ami-b04e92d0
+      wait: yes
+      group: webserver
+      count: 3
+      region: us-west-2
+    tags: create_instance
 
   - name: Start container, connect to network and link
     docker_container:
