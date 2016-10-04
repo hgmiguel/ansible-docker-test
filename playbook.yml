@@ -53,7 +53,7 @@
   gather_facts: yes
   tasks:
   - name: Copy image
-    copy: src=images/javastack-image.tar.gz dest=/tmp/javastack-image.tar.gz owner=foo group=foo mode=0644
+    copy: src=images/javastack-image.tar.gz dest=/tmp/javastack-image.tar.gz mode=0644
   - name: install docker
     package: name=docker state=present
   - name: Load image
