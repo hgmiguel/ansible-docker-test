@@ -4,30 +4,55 @@
 # sudo pip install docker-py==1.7.0
 - hosts: localhost
   connection: docker
+  become: yes
+  gather_facts: no
+  vars_files: 
+  - secrests.yml
   tasks:
   - name: create directory for dockers images
     local_action: file name=images state=directory
-   
+  #- local_action: command pip install boto
+  #- local_action: command pip install docker-py==1.7.0
+
   - name: Build docker image
     local_action: >
       docker_image name=tomcat
         tag=8.5.5-jre8-alpine
         archive_path=images/javastack-image.tar.gz
+        state=present
     tags: create_image
 
   - name: Start ec2
     ec2:
-      key_name: mykey
+      key_name: ansible-test
       instance_type: t2.micro
+      aws_access_key: "{{ ec2_access_key }}"
+      aws_secret_key: "{{ ec2_secret_key }}"
       image: ami-b04e92d0
       wait: yes
-      group: webserver
-      count: 3
+      group_id: sg-16b9e971
+      vpc_subnet_id: subnet-12dd2664
+      count: 1
       region: us-west-2
+    register: ec2
     tags: create_instance
 
-  - name: Start container, connect to network and link
-    docker_container:
-      name: javastack
-      command: catalina.sh run
+
+  - name: Wait for SSH to come up
+    wait_for: host={{ item.public_dns_name }} port=22 delay=60 timeout=320 state=started
+    with_items: '{{ec2.instances}}'
+
+  - debug: var=ec2_instances
+
+  - name: Add all instance public IPs to host group
+    add_host: hostname={{ item.public_ip }} groups=ec2hosts
+    with_items: '{{ec2.instances}}'
+
+- hosts: ec2hosts
+  user: ec2-user
+  gather_facts: yes
+  tasks:
+  - name: install docker
+    package: name=docker state=present
+
 
